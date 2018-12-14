@@ -57,6 +57,8 @@ type
     StatusBar1: TStatusBar;
     cbxKeySize: TComboBox;
     Label8: TLabel;
+    btnPublicApply: TButton;
+    btnPrivateApply: TButton;
     procedure btnCreateKeysClick(Sender: TObject);
     procedure btnFreeKeysClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -65,6 +67,8 @@ type
     procedure btnLoadPrivateClick(Sender: TObject);
     procedure btnSavePrivateClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure btnPublicApplyClick(Sender: TObject);
+    procedure btnPrivateApplyClick(Sender: TObject);
   private
     procedure FreeKey(var Key : TLbRSAKey);
     procedure CreateKey(var Key : TLbRSAKey);
@@ -107,14 +111,16 @@ begin
 end;
 
 procedure TForm1.btnCreateKeysClick(Sender: TObject);
+var
+  IterationCount : Integer;
 begin
   Screen.Cursor := crHourglass;
   FreeKey(PublicKey);
   FreeKey(PrivateKey);
   StatusBar1.SimpleText := 'Generating key pair, this may take a while';
   try
-    GenerateRSAKeysEx(PrivateKey, PublicKey, TLbAsymKeySize(cbxKeySize.ItemIndex),
-      StrToIntDef(edtIterations.Text, 20), nil);
+    IterationCount := StrToIntDef(edtIterations.Text, 20);
+    GenerateRSAKeysEx(PrivateKey, PublicKey, TLbAsymKeySize(cbxKeySize.ItemIndex), IterationCount, nil, nil);
     edtPublicE.Text  := PublicKey.ExponentAsString;
     edtPublicM.Text  := PublicKey.ModulusAsString;
     edtPrivateE.Text := PrivateKey.ExponentAsString;
@@ -169,6 +175,28 @@ begin
         Screen.Cursor := crDefault;
       end;
     end;
+end;
+
+procedure TForm1.btnPrivateApplyClick(Sender: TObject);
+begin
+  if (PrivateKey = nil) then
+  begin
+    CreateKey(PrivateKey);
+  end;
+
+  PrivateKey.ExponentAsString := edtPrivateE.Text;
+  PrivateKey.ModulusAsString := edtPrivateM.Text;
+end;
+
+procedure TForm1.btnPublicApplyClick(Sender: TObject);
+begin
+  if (PublicKey = nil) then
+  begin
+    CreateKey(PublicKey);
+  end;
+
+  PublicKey.ExponentAsString := edtPublicE.Text;
+  PublicKey.ModulusAsString := edtPublicM.Text;
 end;
 
 procedure TForm1.btnLoadPrivateClick(Sender: TObject);
