@@ -44,8 +44,6 @@ type
     btnSave: TButton;
     edtPassPhrase: TEdit;
     lblPassPhrase: TLabel;
-    lblBase64Encoded: TLabel;
-    mmoBase64Encoded: TMemo;
     lblModulus: TLabel;
     mmoModulus: TMemo;
     pnlKeySize: TPanel;
@@ -54,12 +52,19 @@ type
     lblIterations: TLabel;
     edtIterations: TEdit;
     btnCreateKeys: TButton;
+    chkFixedExponent: TCheckBox;
     kpRSA: TLbRSA;
+    chkOpenSSL: TCheckBox;
+    mmoFormattedText: TMemo;
+    cmbEncoding: TComboBox;
+    lblEncoding: TLabel;
     procedure btnCreateKeysClick(Sender: TObject);
     procedure btnLoadClick(Sender: TObject);
     procedure btnSaveClick(Sender: TObject);
     procedure tbcKeyVisibilityChange(Sender: TObject);
     procedure cmbKeySizeChange(Sender: TObject);
+    procedure chkOpenSSLClick(Sender: TObject);
+    procedure cmbEncodingChange(Sender: TObject);
   private
     FActiveKey : TLbRSAKey;
     procedure UpdateControls;
@@ -76,7 +81,7 @@ implementation
 {$R *.dfm}
 
 uses
-  LbUtils;
+  LbUtils, LbBigInt;
 
 procedure TlbRSAKeysForm.AfterConstruction;
 begin
@@ -87,13 +92,29 @@ begin
 end;
 
 procedure TlbRSAKeysForm.btnCreateKeysClick(Sender: TObject);
+var
+  Exponent : TLbBigInt;
 begin
   Screen.Cursor := crHourglass;
   sbrVerify.SimpleText := 'Generating key pair, this may take a while';
   try
     kpRSA.PrimeTestIterations := StrToIntDef(edtIterations.Text, 20);
     kpRSA.KeySize := TLbAsymKeySize(cmbKeySize.ItemIndex);
-    kpRSA.GenerateKeyPair;
+    if (chkFixedExponent.Checked) then
+    begin
+      Exponent := TLbBigInt.Create(0);
+      try
+        Exponent.IntStr := '010001';
+        kpRSA.GenerateKeyPairWithExponent(Exponent);
+      finally
+        Exponent.Free;
+      end;
+    end
+    else
+    begin
+      kpRSA.GenerateKeyPair;
+    end;
+
     tbcKeyVisibilityChange(self);
   finally
     Screen.Cursor := crDefault;
@@ -138,6 +159,17 @@ begin
   end;
 end;
 
+procedure TlbRSAKeysForm.chkOpenSSLClick(Sender: TObject);
+begin
+  UpdateControls;
+end;
+
+procedure TlbRSAKeysForm.cmbEncodingChange(Sender: TObject);
+begin
+  chkOpenSSL.Enabled := (cmbEncoding.ItemIndex = 0);
+  UpdateControls;
+end;
+
 procedure TlbRSAKeysForm.cmbKeySizeChange(Sender: TObject);
 begin
   SetKeySize(TLbAsymKeySize(cmbKeySize.ItemIndex));
@@ -163,18 +195,45 @@ begin
 end;
 
 procedure TlbRSAKeysForm.UpdateControls;
+const
+  BLOCK_FORMAT = '-----%s RSA %s KEY-----';
+var
+  MemoText, HeaderTag, FooterTag, PrivacyText : String;
 begin
   edtExponent.Text := FActiveKey.ExponentAsString;
   mmoModulus.Text := FActiveKey.ModulusAsString;
+
+  MemoText := '';
   if (FActiveKey.Exponent.Size > 0) and (FActiveKey.Modulus.Size > 0) then
   begin
-    mmoBase64Encoded.Text := UTF8ToString(FActiveKey.Base64EncodedText);
-  end
-  else
-  begin
-    mmoBase64Encoded.Text := '';
+    case cmbEncoding.ItemIndex of
+      0:
+      begin
+        MemoText := UTF8ToString(FActiveKey.Base64EncodedText);
+      end;
+
+      1:
+      begin
+        MemoText := kpRSA.CryptoServiceProviderXML[FActiveKey = kpRSA.PrivateKey];
+      end;
+    end;
+
+    if chkOpenSSL.Enabled and chkOpenSSL.Checked then
+    begin
+      PrivacyText := 'PUBLIC';
+      if (FActiveKey = kpRSA.PrivateKey) then
+      begin
+        PrivacyText := 'PRIVATE';
+      end;
+
+      HeaderTag := Format(BLOCK_FORMAT,['BEGIN',PrivacyText]);
+      FooterTag := Format(BLOCK_FORMAT,['END',PrivacyText]);
+
+      MemoText := HeaderTag + sLineBreak + MemoText + sLineBreak + FooterTag;
+    end;
   end;
 
+  mmoFormattedText.Text := MemoText;
   cmbKeySize.ItemIndex := ord(FActiveKey.KeySize);
 end;
 
