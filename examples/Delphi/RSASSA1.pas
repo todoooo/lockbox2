@@ -113,7 +113,8 @@ procedure TForm1.btnLoadPrivateClick(Sender: TObject);
 var
   FS : TFileStream;
 begin
-  if OpenDialog1.Execute then begin
+  if OpenDialog1.Execute then
+  begin
     FS := TFileStream.Create(OpenDialog1.FileName, fmOpenRead);
     Screen.Cursor := crHourGlass;
     try
@@ -129,7 +130,8 @@ procedure TForm1.btnLoadPublicClick(Sender: TObject);
 var
   FS : TFileStream;
 begin
-  if OpenDialog1.Execute then begin
+  if OpenDialog1.Execute then
+  begin
     FS := TFileStream.Create(OpenDialog1.FileName, fmOpenRead);
     Screen.Cursor := crHourGlass;
     try
@@ -149,7 +151,7 @@ begin
   Screen.Cursor := crHourglass;
   StatusBar1.SimpleText := sSigning;
   try
-    LbRSASSA1.SignString(StringToUTF8(edtMsg.Text));
+    LbRSASSA1.SignString(StringToUTF8(edtMsg.Text),True);
 
     SignatureCopy := TLbBigInt.Create(LbRSASSA1.Signature.Size);
     try
@@ -180,7 +182,7 @@ procedure TForm1.btnVerifyClick(Sender: TObject);
   { verify signature against message }
 begin
   StatusBar1.SimpleText := sFail;
-  if LbRSASSA1.VerifyString(StringToUTF8(edtMsg.Text)) then
+  if LbRSASSA1.VerifyString(StringToUTF8(edtMsg.Text),True) then
   begin
     StatusBar1.SimpleText := sPass;
     mmoSignature.Font.Color := clGreen;

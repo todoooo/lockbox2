@@ -81,7 +81,7 @@ implementation
 {$R *.dfm}
 
 uses
-  LbUtils, LbBigInt;
+  LbUtils, LbBigInt, LbString;
 
 procedure TlbRSAKeysForm.AfterConstruction;
 begin
@@ -195,10 +195,8 @@ begin
 end;
 
 procedure TlbRSAKeysForm.UpdateControls;
-const
-  BLOCK_FORMAT = '-----%s RSA %s KEY-----';
 var
-  MemoText, HeaderTag, FooterTag, PrivacyText : String;
+  MemoText : String;
 begin
   edtExponent.Text := FActiveKey.ExponentAsString;
   mmoModulus.Text := FActiveKey.ModulusAsString;
@@ -209,27 +207,27 @@ begin
     case cmbEncoding.ItemIndex of
       0:
       begin
-        MemoText := UTF8ToString(FActiveKey.Base64EncodedText);
+        if (chkOpenSSL.Enabled and chkOpenSSL.Checked) then
+        begin
+          MemoText := kpRSA.OpenSSLText[FActiveKey = kpRSA.PrivateKey];
+        end
+        else
+        begin
+          FActiveKey.Modulus.ReverseBytes;
+          FActiveKey.Exponent.ReverseBytes;
+          try
+            MemoText := UTF8ToString(FActiveKey.Base64EncodedText);
+          finally
+            FActiveKey.Modulus.ReverseBytes;
+            FActiveKey.Exponent.ReverseBytes;
+          end;
+        end;
       end;
 
       1:
       begin
         MemoText := kpRSA.CryptoServiceProviderXML[FActiveKey = kpRSA.PrivateKey];
       end;
-    end;
-
-    if chkOpenSSL.Enabled and chkOpenSSL.Checked then
-    begin
-      PrivacyText := 'PUBLIC';
-      if (FActiveKey = kpRSA.PrivateKey) then
-      begin
-        PrivacyText := 'PRIVATE';
-      end;
-
-      HeaderTag := Format(BLOCK_FORMAT,['BEGIN',PrivacyText]);
-      FooterTag := Format(BLOCK_FORMAT,['END',PrivacyText]);
-
-      MemoText := HeaderTag + sLineBreak + MemoText + sLineBreak + FooterTag;
     end;
   end;
 
